@@ -1,23 +1,21 @@
 #!/bin/bash
 #########################################
-# VOGEL Thierry   			#
-#                 			#
-# V0.1 14/10/2012 version HPUX    	#
-#					# 
-# V0.2 10/01/2013 version linux		#
+# VOGEL Thierry                         #
+#                                       #
+# V0.1 14/10/2012 version HPUX          #
+#                                       # 
+# V0.2 10/01/2013 version linux         #
+# v0.3 12/01/2013 ceci est le script maj#
 #########################################
 ####IDEES#####
-#Je pourrais ajouter un argument d'arret a chaque fonction
-#a=arret et c=continue par exemple
-#lorsque j'envoie c la fonction continue son execution malgre les erreurs
-#lorsque j'envoie a la foncion s'arrete a la moindre erreur
-#je peux meme faire un argument d'arret du programme
-#pour l'instant c'est l'arret du programme qui est defini sans alternative
+#cette lib contient des fonctions specifiques
+#ainsi que les variables d'environnement
 #############
 #####variables#####
 #fichier de configuration
 cRep=/home/thierry/exercices/projets/maj/.conf
-cFic=maj.conf
+lib_maj=lib_maj
+libg=libG
 #fichiers systemes
 rep_boot=/boot
 fboot="initramfs-linux-fallback.img initramfs-linux.img vmlinuz-linux"
@@ -29,49 +27,48 @@ ancien=old
 CONT=0
 ERR_SYSTEME=251
 ERR_USAGE=252
+####preparation######
+source $cRep/$lib_maj
+source $cRep/$libg
 ####fonctions######
-function split_mirror
+function action
 {
-fichiers=$(assocRep "$rep_boot" "$fboot")
-inventaire "$fichiers"
-sauvegarde "$fichiers"
-touch "${rep_boot}/sauvegarde"
-inventaire "$dsboot"
-mount $dsboot $rep_sboot
-sauvegarde "$fichiers" "$rep_sboot"
-sauvegarde "$fichiers" "$rep_sboot" "$ancien"
-split $lv_root
-touch "${rep_boot}/split"
-}
-function valide_change
-{
-valide "${lv_root}"
-}
-function retour_phase1
-{
-retour_p1 "${lv_root}"
-}
-function retour_phase2
-{
-#retour_p2 "${lv_root}" "$fboot" "$dsboot" "$rep_boot"
-#impossible je vais devoir broder, sinon je casse la lib.
-}
-####Principale#####
-
-#inclusions
-
-#tests
-
-##essai fonctions
-#fichiers="maj.conf libmaj"
-#regarde=$(assocRep ".conf" "$fichiers") 
-#inventaire "$regarde"
-
-if [ $# -ne 1 ];then
-        echo "Nombre d'arguments incorrects";
-        aide;
-	exit 251;
+if [ "$1" -eq 1 ];then 
+	echo "split"
+	split_mirror
+elif [ "$1" -eq 2 ];then 
+	echo "valide"
+	valide_change
+elif [ "$1" -eq 3 ];then
+	echo "retour"
+	retour_phase1
+elif [ "$1" -eq 4 ];then
+	echo "retour2"
+	retour_phase2
+else retour 1 "choix de l'utilisateur"
 fi
 
-###inventaire des elements necessaires(fichiers boot, disque de sauvegarde, point de montage sauvegarde)
-#boot
+}
+function menu
+{
+dialog --help-button --title "Script de retour sur maj" \
+--menu "faite votre choix:" 15 55 5 \
+1 "split avec trackchanges" \
+2 "valider le changement" \
+3 "retour arriere phase 1" \
+4 "retour arriere phase 2" 2>menu_maj.$$
+choix=$(cat menu_maj.$$)
+set $choix
+if [ "$1" == "HELP" ];then
+	choix=$2
+	dialog --msgbox "pas d'aide disponible :) - a bientot" 30 80 2>/dev/null;
+	menu
+else
+	choix=$1
+fi
+action $choix
+}
+trap "rm menu_maj.$$" 0 1 2 5 15
+#trap "rm menu_maj.$$" INT QUIT
+menu
+exit 0

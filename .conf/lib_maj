@@ -5,156 +5,33 @@
 # V0.1 14/10/2012 version HPUX    	#
 #					# 
 # V0.2 10/01/2013 version linux		#
+# v0.3 12/01/2013 ceci est la lib_maj   #
 #########################################
 ####IDEES#####
-#Je pourrais ajouter un argument d'arret a chaque fonction
-#a=arret et c=continue par exemple
-#lorsque j'envoie c la fonction continue son execution malgre les erreurs
-#lorsque j'envoie a la foncion s'arrete a la moindre erreur
-#je peux meme faire un argument d'arret du programme
-#pour l'instant c'est l'arret du programme qui est defini sans alternative
+#cette lib contient des fonctions specifiques
+#ainsi que les variables d'environnement
 #############
 #####variables#####
-#fichier de configuration
-cRep=/home/thierry/exercices/projets/maj/.conf
-cFic=maj.conf
-#fichiers systemes
-rep_boot=/boot
-fboot="initramfs-linux-fallback.img initramfs-linux.img vmlinuz-linux"
-rep_sboot=/media/sboot
-dsboot=/dev/sdb1
-lv_root=/dev/vg00/lvol0
-#convention
-ancien=old
-CONT=0
-ERR_SYSTEME=251
-ERR_USAGE=252
 ####fonctions######
-
 function aide {
 echo "
 usage : $0
-		-sauve : sauvegarde le noyau et l'initrd avant maj puis fait un split avec trackchanges
-		-valide : fait un merge après maj, supprime les sauvegardes et copie le nouveau noyau vers le second disque
-		-retour : debute le retour arriere en faisant un split vers root_old
-		-echange : apres reboot "
+                -sauve : sauvegarde le noyau et l'initrd avant maj puis fait un split avec trackchanges
+                -valide : fait un merge après maj, supprime les sauvegardes et copie le nouveau noyau ve
+rs le second disque
+                -retour : debute le retour arriere en faisant un split vers root_old
+                -echange : apres reboot "
 }
-function retour
-{
-#usage : retour "code retour" "message" "code retour de remplacement"
-if [ "$1" -ne 0 ];then
-	if [ $# -eq 3 ];then
-		sortie=$3
-	else 
-		sortie=$1
-	fi
-	echo "$2 KO"
-	if [ "$sortie" -ne 0 ];then
-		exit $sortie
-	fi
-else 
-	echo "$2 OK"
-fi
-}
-function assocRep
-{
-#usage : assocRep "rep" "fichiers"
-if [ $# -ne 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
-for fichier in $2;do resultat="${1}/${fichier} $resultat";done
-echo $resultat
-}
-function inventaire
-{
-#usage : inventaire "fichiers a inventorier" 
-if [ $# -ne 1 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
-demande="$1"
-#verif fichiers noyau
-	for fichier in $demande;do 
-		if [ ! -e ${fichier} ];then 
-			retour 251 "le fichier $fichier n'existe pas
-			fin de l'inventaire"
-		else 
-			retour 0 "$fichier trouve"
-		fi
-	done
-}
-function contientElement
-{
-#usage : contientElement "element a trouver" "tableau"
-#${@:2} represente les arguments à partir du deuxieme element
-#$1 est l'element a trouver
 
-if [ $# -lt 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
-
-for element in "${@:2}"; do [[ "$element" == "$1" ]] && return 0;done
-return 1
-}
-function sauvegarde
-{
-#sauvegarde la partie boot lorqu'elle n'est pas en lvm
-#usage : sauvegarde "liste des fichiers à sauvegarder" / sauvegarde "liste des fichiers" "destination"
-#usage magique(bidon ;-) ) : en ajoutant un troisieme on peut ajouter une extention au fichier destination
-if [ $# -gt 3 ] || [ $# -eq 0 ];then 
-retour 252 "$FUNCNAME : nombre d'arguments invalide"
-fi
-liste_fichiers="$1"
-local reps
-local rep
-####calcul de la taille des fichiers
-total=$(du -k ${liste_fichiers[@]} | awk '{total+=$1}END{print total}')
-
-if [ $# -eq 1 ];then
-for fichier in $liste_fichiers;do 
-if [ "$rep" != "${fichier%/*}" ];then 
-	if [ -z "$reps" ];then 
-		reps=(${fichier%/*})
-		rep=${fichier%/*}
-	elif [ ! contientElement "$rep" "$reps" ];then
-		rep=${fichier%/*}
-		reps[${#reps[@]}]=$rep	
-	fi
-fi
-done
-for rep in ${reps[@]};do 
-	total_dispo=$(($total_dispo+$(df -Pk $rep | awk '{if (NR>1){print $4}}')))
-done
-
-elif [ $# -eq 2 ];then
-destination=$2
-total_dispo=$(df -Pk $destination)
-else 
-destination=$2
-total_dispo=$(df -Pk $destination)
-old=$3
-fi
-if [ "$total_dispo" -lt "$total" ];then
-	retour 251 "espace disque insuffisant"
-fi
-if [ -z "$destination" ];then
-	for fichier in $liste_fichiers;do
-		cp $fichier ${fichier}_old
-		retour $? "copie de $fichier vers ${fichier}_old" 251
-	done
-elif [ -z "$old" ];then 
-	for fichier in $liste_fichiers;do
-		cp $fichier ${destination}
-		retour $? "copie de $fichier vers ${destination}" 251
-	done	
-else 
-	for fichier in $liste_fichiers;do
-		cp $fichier ${destination}/${fichier}_$old
-		retour $? "copie de $fichier vers ${destination}/${fichier}_$old" 251
-	done
-fi
-}
 function split
 {
 #fonction bacle car je cherche une solution
 #usage : split "nom lv complet avec chemin : /dev/vg00/root"
 #la fonction verifie que la copy est complete et split
-if [ "$(lvs vg00/lvol0 -o copy_percent | awk '{if (NR>1) {if ($1=="100,00"){print "OK"}else {print "KO"}}}')" -eq 0 ];then 
-	lvconvert --splitmirrors 1 --trackchanges $1
-	retour $? "split de $1" 251
+if [ "$(lvs vg00/lvol0 -o copy_percent | awk '{if (NR>1) {if ($1=="100,00"){print "OK"}else {print "KO"}
+}}')" -eq 0 ];then 
+        lvconvert --splitmirrors 1 --trackchanges $1
+        retour $? "split de $1" 251
 fi
 }
 function valide
@@ -164,6 +41,79 @@ if [ $# -ne 1 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
 lvconvert --merge ${1}_rimage_1
 retour $? "merge de $1" $ERR_SYSTEME
 rm -f "${rep_boot}/split" "${rep_boot}/sauvegarde"
+}
+function retour_p1
+{
+#usage : retour "nouveau nom" "lv a spliter/renommer"
+if [ $# -ne 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+        lvconvert --splitmirrors 1 --name ${1}_old $2
+        retour $? "split de $lv_origine vers $nouveau_nom" $ERR_SYSTEME
+}
+function retour_p2
+{
+#usage : retour_p2 "fichiers" "disque_boot" "point de montage du mirroir boot" "lv_root"
+if [ $# -ne 4 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+fichiers="$1"
+dboot=$2
+ptm=$3
+lv_root=$4
+mount $dboot $ptm
+retour $? "montage de $dboot sur $ptm" ERR_SYSTEME
+
+for fichier in "$fichiers";do 
+        mv ${fichier}_old ${fichier}
+        retour $? "move de ${fichier}_old vers ${fichier}"
+        fichier=${ptm}/${fichier##*/}
+        mv ${fichier}_old ${fichier}
+        retour $? "move de ${fichier}_old vers ${fichier}"
+done
+lvremove -f $lv_root
+vg=${lv_root%/*}
+vg=${vg##*/}
+lv=${lv##*/}
+lvrename $vg ${lv}_old $lv
+lvconvert -m 1 --type raid1 ${vg}/{lv}
+}
+
+function split_mirror
+{
+fichiers=$(assocRep "$rep_boot" "$fboot")
+inventaire "$fichiers"
+sauvegarde "$fichiers"
+touch "${rep_boot}/sauvegarde"
+inventaire "$dsboot"
+mount $dsboot $rep_sboot
+sauvegarde "$fichiers" "$rep_sboot"
+sauvegarde "$fichiers" "$rep_sboot" "$ancien"
+split $lv_root
+touch "${rep_boot}/split"
+}
+function valide_change
+{
+if [ -e "${rep_boot}/split" ];then
+	valide "${lv_root}"
+fi
+}
+function retour_phase1
+{
+if [ -e "${rep_boot}/split" ];then
+	retour_p1 ${lv_root}_old ${lv_root}
+	touch "${rep_boot}/retour_p1"
+	rm -f "${rep_boot}/split"
+else 
+	retour 251 "le flag de split n'a pas ete trouve"
+fi
+}
+function retour_phase2
+{
+if [ -e "${rep_boot}/retour_p1" ];then
+	fichiers="$(assocRep "$rep_boot" "$fboot")"
+	inventaire "$fichiers"
+	retour_p2 "${fichiers}" "${dsboot}" "${rep_sboot}" "${lv_root}"
+	rm -f "${rep_boot}/retour_p1"
+else
+	retour 251 "le flag de retour_p1 n'a pas ete trouve"
+fi
 }
 ####Principale#####
 
@@ -176,3 +126,11 @@ rm -f "${rep_boot}/split" "${rep_boot}/sauvegarde"
 #regarde=$(assocRep ".conf" "$fichiers") 
 #inventaire "$regarde"
 
+if [ $# -ne 1 ];then
+        echo "Nombre d'arguments incorrects";
+        aide;
+	exit 251;
+fi
+
+###inventaire des elements necessaires(fichiers boot, disque de sauvegarde, point de montage sauvegarde)
+#boot
