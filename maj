@@ -1,0 +1,77 @@
+#!/bin/bash
+#########################################
+# VOGEL Thierry   			#
+#                 			#
+# V0.1 14/10/2012 version HPUX    	#
+#					# 
+# V0.2 10/01/2013 version linux		#
+#########################################
+####IDEES#####
+#Je pourrais ajouter un argument d'arret a chaque fonction
+#a=arret et c=continue par exemple
+#lorsque j'envoie c la fonction continue son execution malgre les erreurs
+#lorsque j'envoie a la foncion s'arrete a la moindre erreur
+#je peux meme faire un argument d'arret du programme
+#pour l'instant c'est l'arret du programme qui est defini sans alternative
+#############
+#####variables#####
+#fichier de configuration
+cRep=/home/thierry/exercices/projets/maj/.conf
+cFic=maj.conf
+#fichiers systemes
+rep_boot=/boot
+fboot="initramfs-linux-fallback.img initramfs-linux.img vmlinuz-linux"
+rep_sboot=/media/sboot
+dsboot=/dev/sdb1
+lv_root=/dev/vg00/lvol0
+#convention
+ancien=old
+CONT=0
+ERR_SYSTEME=251
+ERR_USAGE=252
+####fonctions######
+function split_mirror
+{
+fichiers=$(assocRep "$rep_boot" "$fboot")
+inventaire "$fichiers"
+sauvegarde "$fichiers"
+touch "${rep_boot}/sauvegarde"
+inventaire "$dsboot"
+mount $dsboot $rep_sboot
+sauvegarde "$fichiers" "$rep_sboot"
+sauvegarde "$fichiers" "$rep_sboot" "$ancien"
+split $lv_root
+touch "${rep_boot}/split"
+}
+function valide_change
+{
+valide "${lv_root}"
+}
+function retour_phase1
+{
+retour_p1 "${lv_root}"
+}
+function retour_phase2
+{
+#retour_p2 "${lv_root}" "$fboot" "$dsboot" "$rep_boot"
+#impossible je vais devoir broder, sinon je casse la lib.
+}
+####Principale#####
+
+#inclusions
+
+#tests
+
+##essai fonctions
+#fichiers="maj.conf libmaj"
+#regarde=$(assocRep ".conf" "$fichiers") 
+#inventaire "$regarde"
+
+if [ $# -ne 1 ];then
+        echo "Nombre d'arguments incorrects";
+        aide;
+	exit 251;
+fi
+
+###inventaire des elements necessaires(fichiers boot, disque de sauvegarde, point de montage sauvegarde)
+#boot

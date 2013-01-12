@@ -1,0 +1,178 @@
+#!/bin/bash
+#########################################
+# VOGEL Thierry   			#
+#                 			#
+# V0.1 14/10/2012 version HPUX    	#
+#					# 
+# V0.2 10/01/2013 version linux		#
+#########################################
+####IDEES#####
+#Je pourrais ajouter un argument d'arret a chaque fonction
+#a=arret et c=continue par exemple
+#lorsque j'envoie c la fonction continue son execution malgre les erreurs
+#lorsque j'envoie a la foncion s'arrete a la moindre erreur
+#je peux meme faire un argument d'arret du programme
+#pour l'instant c'est l'arret du programme qui est defini sans alternative
+#############
+#####variables#####
+#fichier de configuration
+cRep=/home/thierry/exercices/projets/maj/.conf
+cFic=maj.conf
+#fichiers systemes
+rep_boot=/boot
+fboot="initramfs-linux-fallback.img initramfs-linux.img vmlinuz-linux"
+rep_sboot=/media/sboot
+dsboot=/dev/sdb1
+lv_root=/dev/vg00/lvol0
+#convention
+ancien=old
+CONT=0
+ERR_SYSTEME=251
+ERR_USAGE=252
+####fonctions######
+
+function aide {
+echo "
+usage : $0
+		-sauve : sauvegarde le noyau et l'initrd avant maj puis fait un split avec trackchanges
+		-valide : fait un merge après maj, supprime les sauvegardes et copie le nouveau noyau vers le second disque
+		-retour : debute le retour arriere en faisant un split vers root_old
+		-echange : apres reboot "
+}
+function retour
+{
+#usage : retour "code retour" "message" "code retour de remplacement"
+if [ "$1" -ne 0 ];then
+	if [ $# -eq 3 ];then
+		sortie=$3
+	else 
+		sortie=$1
+	fi
+	echo "$2 KO"
+	if [ "$sortie" -ne 0 ];then
+		exit $sortie
+	fi
+else 
+	echo "$2 OK"
+fi
+}
+function assocRep
+{
+#usage : assocRep "rep" "fichiers"
+if [ $# -ne 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+for fichier in $2;do resultat="${1}/${fichier} $resultat";done
+echo $resultat
+}
+function inventaire
+{
+#usage : inventaire "fichiers a inventorier" 
+if [ $# -ne 1 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+demande="$1"
+#verif fichiers noyau
+	for fichier in $demande;do 
+		if [ ! -e ${fichier} ];then 
+			retour 251 "le fichier $fichier n'existe pas
+			fin de l'inventaire"
+		else 
+			retour 0 "$fichier trouve"
+		fi
+	done
+}
+function contientElement
+{
+#usage : contientElement "element a trouver" "tableau"
+#${@:2} represente les arguments à partir du deuxieme element
+#$1 est l'element a trouver
+
+if [ $# -lt 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+
+for element in "${@:2}"; do [[ "$element" == "$1" ]] && return 0;done
+return 1
+}
+function sauvegarde
+{
+#sauvegarde la partie boot lorqu'elle n'est pas en lvm
+#usage : sauvegarde "liste des fichiers à sauvegarder" / sauvegarde "liste des fichiers" "destination"
+#usage magique(bidon ;-) ) : en ajoutant un troisieme on peut ajouter une extention au fichier destination
+if [ $# -gt 3 ] || [ $# -eq 0 ];then 
+retour 252 "$FUNCNAME : nombre d'arguments invalide"
+fi
+liste_fichiers="$1"
+local reps
+local rep
+####calcul de la taille des fichiers
+total=$(du -k ${liste_fichiers[@]} | awk '{total+=$1}END{print total}')
+
+if [ $# -eq 1 ];then
+for fichier in $liste_fichiers;do 
+if [ "$rep" != "${fichier%/*}" ];then 
+	if [ -z "$reps" ];then 
+		reps=(${fichier%/*})
+		rep=${fichier%/*}
+	elif [ ! contientElement "$rep" "$reps" ];then
+		rep=${fichier%/*}
+		reps[${#reps[@]}]=$rep	
+	fi
+fi
+done
+for rep in ${reps[@]};do 
+	total_dispo=$(($total_dispo+$(df -Pk $rep | awk '{if (NR>1){print $4}}')))
+done
+
+elif [ $# -eq 2 ];then
+destination=$2
+total_dispo=$(df -Pk $destination)
+else 
+destination=$2
+total_dispo=$(df -Pk $destination)
+old=$3
+fi
+if [ "$total_dispo" -lt "$total" ];then
+	retour 251 "espace disque insuffisant"
+fi
+if [ -z "$destination" ];then
+	for fichier in $liste_fichiers;do
+		cp $fichier ${fichier}_old
+		retour $? "copie de $fichier vers ${fichier}_old" 251
+	done
+elif [ -z "$old" ];then 
+	for fichier in $liste_fichiers;do
+		cp $fichier ${destination}
+		retour $? "copie de $fichier vers ${destination}" 251
+	done	
+else 
+	for fichier in $liste_fichiers;do
+		cp $fichier ${destination}/${fichier}_$old
+		retour $? "copie de $fichier vers ${destination}/${fichier}_$old" 251
+	done
+fi
+}
+function split
+{
+#fonction bacle car je cherche une solution
+#usage : split "nom lv complet avec chemin : /dev/vg00/root"
+#la fonction verifie que la copy est complete et split
+if [ "$(lvs vg00/lvol0 -o copy_percent | awk '{if (NR>1) {if ($1=="100,00"){print "OK"}else {print "KO"}}}')" -eq 0 ];then 
+	lvconvert --splitmirrors 1 --trackchanges $1
+	retour $? "split de $1" 251
+fi
+}
+function valide
+{
+#usage : valide "lv a merger"
+if [ $# -ne 1 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+lvconvert --merge ${1}_rimage_1
+retour $? "merge de $1" $ERR_SYSTEME
+rm -f "${rep_boot}/split" "${rep_boot}/sauvegarde"
+}
+####Principale#####
+
+#inclusions
+
+#tests
+
+##essai fonctions
+#fichiers="maj.conf libmaj"
+#regarde=$(assocRep ".conf" "$fichiers") 
+#inventaire "$regarde"
+

@@ -1,0 +1,23 @@
+#split avec track
+lvconvert --splitmirrors 1 --trackchanges vg00/root
+cp /boot/vmlinuz-linux{,_old}
+cp /boot/initramfs-linux{.img,_old.img}
+cp /boot/initramfs-linux-fallback{,_old}.img
+mount /dev/sdb1 tmp
+cp /boot/{initramfs-linux-fallback.img,vmlinuz-linux,initramfs-linux.img} tmp
+cp /boot/{vmlinuz-linux_old,initramfs-linux_old.img,initramfs-linux-fallback_old.img} tmp
+#valide
+lvconvert --merge vg00/root_rimage_1
+#retour phase 1
+lvconvert --splitmirrors 1 --name root_old vg00/root
+#retour phase 2
+mv /boot/initramfs-linux-fallback{_old,}.img
+mv /boot/initramfs-linux{_old.img,.img}
+mv /boot/vmlinuz-linux{_old,}
+mount /dev/sdb1 tmp
+mv tmp/initramfs-linux-fallback{_old,}.img
+mv tmp/initramfs-linux{_old.img,.img}
+mv tmp/vmlinuz-linux{_old,}
+lvremove -f vg00/root
+lvrename vg00 root_old root
+lvconvert -m 1 --type raid1 vg00/root
