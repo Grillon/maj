@@ -28,8 +28,7 @@ function split
 #fonction bacle car je cherche une solution
 #usage : split "nom lv complet avec chemin : /dev/vg00/root"
 #la fonction verifie que la copy est complete et split
-if [ "$(lvs vg00/lvol0 -o copy_percent | awk '{if (NR>1) {if ($1=="100,00"){print "OK"}else {print "KO"}
-}}')" -eq 0 ];then 
+if [ "$(lvs $lv_root -o copy_percent | awk '{if (NR>1) {if ($1=="100,00"){print "OK"}else {print "KO"}}}')" == "OK" ];then 
         lvconvert --splitmirrors 1 --trackchanges $1
         retour $? "split de $1" 251
 fi
@@ -46,8 +45,12 @@ function retour_p1
 {
 #usage : retour "nouveau nom" "lv a spliter/renommer"
 if [ $# -ne 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
-        lvconvert --splitmirrors 1 --name ${1}_old $2
+lv_origine=${2}
+nouveau_nom=${1}
+        lvconvert --splitmirrors 1 --name ${nouveau_nom} ${lv_origine}
         retour $? "split de $lv_origine vers $nouveau_nom" $ERR_SYSTEME
+	lvchange -p rw ${1}
+        retour $? "activation droit ecriture sur ${nouveau_nom}" $ERR_SYSTEME
 }
 function retour_p2
 {
@@ -61,18 +64,18 @@ mount $dboot $ptm
 retour $? "montage de $dboot sur $ptm" ERR_SYSTEME
 
 for fichier in "$fichiers";do 
-        mv ${fichier}_old ${fichier}
-        retour $? "move de ${fichier}_old vers ${fichier}"
+        mv ${fichier}${ancien} ${fichier}
+        retour $? "move de ${fichier}${ancien} vers ${fichier}"
         fichier=${ptm}/${fichier##*/}
-        mv ${fichier}_old ${fichier}
-        retour $? "move de ${fichier}_old vers ${fichier}"
+        mv ${fichier}${ancien} ${fichier}
+        retour $? "move de ${fichier}${ancien} vers ${fichier}"
 done
 lvremove -f $lv_root
 vg=${lv_root%/*}
 vg=${vg##*/}
 lv=${lv##*/}
-lvrename $vg ${lv}_old $lv
-lvconvert -m 1 --type raid1 ${vg}/{lv}
+lvrename $vg ${lv}${ancien} $lv
+lvconvert -m 1 --type raid1 ${vg}/${lv}
 }
 
 function split_mirror
@@ -81,10 +84,10 @@ fichiers=$(assocRep "$rep_boot" "$fboot")
 inventaire "$fichiers"
 sauvegarde "$fichiers"
 touch "${rep_boot}/sauvegarde"
-inventaire "$dsboot"
-mount $dsboot $rep_sboot
-sauvegarde "$fichiers" "$rep_sboot"
-sauvegarde "$fichiers" "$rep_sboot" "$ancien"
+#inventaire "$dsboot"
+#mount $dsboot $rep_sboot
+#sauvegarde "$fichiers" "$rep_sboot"
+#sauvegarde "$fichiers" "$rep_sboot" "$ancien"
 split $lv_root
 touch "${rep_boot}/split"
 }
@@ -97,7 +100,7 @@ fi
 function retour_phase1
 {
 if [ -e "${rep_boot}/split" ];then
-	retour_p1 ${lv_root}_old ${lv_root}
+	retour_p1 ${lv_root}${ancien} ${lv_root}
 	touch "${rep_boot}/retour_p1"
 	rm -f "${rep_boot}/split"
 else 
@@ -109,7 +112,7 @@ function retour_phase2
 if [ -e "${rep_boot}/retour_p1" ];then
 	fichiers="$(assocRep "$rep_boot" "$fboot")"
 	inventaire "$fichiers"
-	retour_p2 "${fichiers}" "${dsboot}" "${rep_sboot}" "${lv_root}"
+	#retour_p2 "${fichiers}" "${dsboot}" "${rep_sboot}" "${lv_root}"
 	rm -f "${rep_boot}/retour_p1"
 else
 	retour 251 "le flag de retour_p1 n'a pas ete trouve"

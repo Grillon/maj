@@ -13,23 +13,23 @@
 #############
 #####variables#####
 #fichier de configuration
-cRep=/home/thierry/exercices/projets/maj/.conf
+cRep=/home/thierry/Projets/maj/.conf
 lib_maj=lib_maj
 libg=libG
 #fichiers systemes
 rep_boot=/boot
-fboot="initramfs-linux-fallback.img initramfs-linux.img vmlinuz-linux"
+fboot="initramfs-2.6.32-220.el6.i686.img vmlinuz-2.6.32-220.el6.i686"
 rep_sboot=/media/sboot
 dsboot=/dev/sdb1
-lv_root=/dev/vg00/lvol0
+lv_root=/dev/vg_livecd/lv_root
 #convention
 ancien=old
 CONT=0
 ERR_SYSTEME=251
 ERR_USAGE=252
 ####preparation######
-source $cRep/$lib_maj
-source $cRep/$libg
+. $cRep/$lib_maj
+. $cRep/$libg
 ####fonctions######
 function action
 {
@@ -45,9 +45,12 @@ elif [ "$1" -eq 3 ];then
 elif [ "$1" -eq 4 ];then
 	echo "retour2"
 	retour_phase2
+elif [ "$1" -eq 99 ];then
+	echo "Action annulé"
+	aide
 else retour 1 "choix de l'utilisateur"
 fi
-
+exit 0
 }
 function menu
 {
@@ -58,13 +61,12 @@ dialog --help-button --title "Script de retour sur maj" \
 3 "retour arriere phase 1" \
 4 "retour arriere phase 2" 2>menu_maj.$$
 choix=$(cat menu_maj.$$)
+choix=${choix:=99}
 set $choix
 if [ "$1" == "HELP" ];then
 	choix=$2
 	dialog --msgbox "pas d'aide disponible :) - a bientot" 30 80 2>/dev/null;
 	menu
-else
-	choix=$1
 fi
 action $choix
 }
