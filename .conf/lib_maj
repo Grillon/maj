@@ -56,27 +56,20 @@ nouveau_nom=${1}
 }
 function retour_p2
 {
-#usage : retour_p2 "fichiers" "disque_boot" "point de montage du mirroir boot" "lv_root"
-if [ $# -ne 4 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
+#usage : retour_p2 "fichiers" "lv_root"
+if [ $# -ne 2 ];then retour 252 "$FUNCNAME : nombre d'arguments invalide";fi
 fichiers="$1"
-dboot=$2
-ptm=$3
-lv_root=$4
-mount $dboot $ptm
-retour $? "montage de $dboot sur $ptm" ERR_SYSTEME
+lv_root=$2
 
-for fichier in "$fichiers";do 
-        mv ${fichier}${ANCIEN} ${fichier}
-        retour $? "move de ${fichier}${ANCIEN} vers ${fichier}"
-        fichier=${ptm}/${fichier##*/}
+for fichier in $fichiers;do 
         mv ${fichier}${ANCIEN} ${fichier}
         retour $? "move de ${fichier}${ANCIEN} vers ${fichier}"
 done
 lvremove -f $lv_root
 vg=${lv_root%/*}
 vg=${vg##*/}
-lv=${lv##*/}
-lvrename $vg ${lv}${ANCIEN} $lv
+lv=${lv_root##*/}
+lvrename ${vg} ${lv}${ANCIEN} ${lv}
 lvconvert -m 1 --type raid1 ${vg}/${lv}
 }
 
@@ -114,7 +107,7 @@ function retour_phase2
 if [ -e "${rep_boot}/retour_p1" ];then
 	fichiers="$(assocRep "$rep_boot" "$fboot")"
 	inventaire "$fichiers"
-	#retour_p2 "${fichiers}" "${dsboot}" "${rep_sboot}" "${lv_root}"
+	retour_p2 "${fichiers}" "${lv_root}"
 	rm -f "${rep_boot}/retour_p1"
 else
 	retour 251 "le flag de retour_p1 n'a pas ete trouve"
