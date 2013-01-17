@@ -1,18 +1,25 @@
 #!/bin/bash
 #########################################
-# VOGEL Thierry   			#
 #                 			#
 # V0.1 14/10/2012 version HPUX    	#
 #					# 
 # V0.2 10/01/2013 version linux		#
 # v0.3 12/01/2013 ceci est devenue la   #
 # libGenerale				#
+# V0.4 17/01/2013 menus correction 	#
+# et reorg				#
 #########################################
-
+# USAGE DE LA LIBG : la libG doit etre charge(source) en dernier car elle contient des constantes optionnelles
 ####IDEES#####
 #j'aimerais revoir le code pour qu'il fonctionne en ksh
 #ainsi je pourrais l'utiliser aussi au bureau
 #############
+####CONSTANTES#####
+CONT=0
+ERR_SYSTEME=251
+ERR_USAGE=252
+####variables######
+${ANCIEN:=_old}
 ####fonctions######
 
 function aide {
@@ -116,8 +123,8 @@ if [ "$total_dispo" -lt "$total" ];then
 fi
 if [ -z "$destination" ];then
 	for fichier in $liste_fichiers;do
-		cp $fichier ${fichier}_old
-		retour $? "copie de $fichier vers ${fichier}_old" 251
+		cp $fichier ${fichier}${ANCIEN}
+		retour $? "copie de $fichier vers ${fichier}${ANCIEN}" 251
 	done
 elif [ -z "$old" ];then 
 	for fichier in $liste_fichiers;do
@@ -126,8 +133,8 @@ elif [ -z "$old" ];then
 	done	
 else 
 	for fichier in $liste_fichiers;do
-		cp $fichier ${destination}/${fichier}_$old
-		retour $? "copie de $fichier vers ${destination}/${fichier}_$old" 251
+		cp $fichier ${destination}/${fichier}${ANCIEN}
+		retour $? "copie de $fichier vers ${destination}/${fichier}${ANCIEN}" 251
 	done
 fi
 }

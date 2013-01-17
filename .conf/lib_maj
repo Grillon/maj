@@ -1,16 +1,18 @@
 #!/bin/bash
 #########################################
-# VOGEL Thierry   			#
 #                 			#
 # V0.1 14/10/2012 version HPUX    	#
 #					# 
 # V0.2 10/01/2013 version linux		#
 # v0.3 12/01/2013 ceci est la lib_maj   #
+# v0.4 17/01/2013 correction mineures   #
 #########################################
 ####IDEES#####
 #cette lib contient des fonctions specifiques
 #ainsi que les variables d'environnement
 #############
+#####CONSTANTES####
+ANCIEN=_old
 #####variables#####
 ####fonctions######
 function aide {
@@ -64,17 +66,17 @@ mount $dboot $ptm
 retour $? "montage de $dboot sur $ptm" ERR_SYSTEME
 
 for fichier in "$fichiers";do 
-        mv ${fichier}${ancien} ${fichier}
-        retour $? "move de ${fichier}${ancien} vers ${fichier}"
+        mv ${fichier}${ANCIEN} ${fichier}
+        retour $? "move de ${fichier}${ANCIEN} vers ${fichier}"
         fichier=${ptm}/${fichier##*/}
-        mv ${fichier}${ancien} ${fichier}
-        retour $? "move de ${fichier}${ancien} vers ${fichier}"
+        mv ${fichier}${ANCIEN} ${fichier}
+        retour $? "move de ${fichier}${ANCIEN} vers ${fichier}"
 done
 lvremove -f $lv_root
 vg=${lv_root%/*}
 vg=${vg##*/}
 lv=${lv##*/}
-lvrename $vg ${lv}${ancien} $lv
+lvrename $vg ${lv}${ANCIEN} $lv
 lvconvert -m 1 --type raid1 ${vg}/${lv}
 }
 
@@ -87,7 +89,7 @@ touch "${rep_boot}/sauvegarde"
 #inventaire "$dsboot"
 #mount $dsboot $rep_sboot
 #sauvegarde "$fichiers" "$rep_sboot"
-#sauvegarde "$fichiers" "$rep_sboot" "$ancien"
+#sauvegarde "$fichiers" "$rep_sboot" "$ANCIEN"
 split $lv_root
 touch "${rep_boot}/split"
 }
@@ -100,7 +102,7 @@ fi
 function retour_phase1
 {
 if [ -e "${rep_boot}/split" ];then
-	retour_p1 ${lv_root}${ancien} ${lv_root}
+	retour_p1 ${lv_root}${ANCIEN} ${lv_root}
 	touch "${rep_boot}/retour_p1"
 	rm -f "${rep_boot}/split"
 else 

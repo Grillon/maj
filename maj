@@ -1,6 +1,5 @@
 #!/bin/bash
 #########################################
-# VOGEL Thierry                         #
 #                                       #
 # V0.1 14/10/2012 version HPUX          #
 #                                       # 
@@ -22,12 +21,8 @@ fboot="initramfs-2.6.32-220.el6.i686.img vmlinuz-2.6.32-220.el6.i686"
 rep_sboot=/media/sboot
 dsboot=/dev/sdb1
 lv_root=/dev/vg_livecd/lv_root
-#convention
-ancien=old
-CONT=0
-ERR_SYSTEME=251
-ERR_USAGE=252
 ####preparation######
+#la lib G doit être sourcée en dernier
 . $cRep/$lib_maj
 . $cRep/$libg
 ####fonctions######
